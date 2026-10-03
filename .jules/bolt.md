@@ -1,0 +1,3 @@
+## 2023-10-03 - [Avoid ObservableCollection.Clear() + Add() for ring buffers]
+**Learning:** In WPF, when maintaining a maximum size for an `ObservableCollection` (ring buffer), bulk removing items by copying to a temporary list, calling `.Clear()`, and then iterating with `.Add()` to re-insert the kept items causes massive UI thread stalls. Every `.Add()` fires a `CollectionChanged` event, leading to thousands of unnecessary renders per batch tick under heavy load.
+**Action:** Use `.RemoveAt(0)` in a loop for the excess elements. While `.RemoveAt(0)` still triggers events, it strictly operates only on the elements being removed (the delta), saving the app from processing the UI updates for the thousands of items that remain unchanged.
