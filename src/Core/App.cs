@@ -32,10 +32,64 @@ namespace DDCAP.AltayCTF
         [System.Runtime.InteropServices.DllImport("kernel32.dll", SetLastError = true, CharSet = System.Runtime.InteropServices.CharSet.Ansi)]
         private static extern IntPtr LoadLibrary(string lpLibFileName);
 
+        public static bool IsNpcapInstalled()
+        {
+            string sysDir = Environment.SystemDirectory;
+            if (File.Exists(Path.Combine(sysDir, "wpcap.dll"))) return true;
+            if (File.Exists(Path.Combine(sysDir, "Npcap", "wpcap.dll"))) return true;
+
+            string winDir = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
+            if (File.Exists(Path.Combine(winDir, "SysWOW64", "wpcap.dll"))) return true;
+            if (File.Exists(Path.Combine(winDir, "SysWOW64", "Npcap", "wpcap.dll"))) return true;
+
+            return false;
+        }
+
+        public static void CheckAndInstallNpcap()
+        {
+            if (IsNpcapInstalled()) return;
+
+            var result = MessageBox.Show(
+                "Для захвата трафика DDCAP требуется драйвер Npcap.\nУстановить его сейчас автоматически?",
+                "Отсутствует Npcap",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+
+            if (result == MessageBoxResult.Yes)
+            {
+                try
+                {
+                    string tempInstaller = Path.Combine(Path.GetTempPath(), "npcap_installer.exe");
+                    using (var webClient = new WebClient())
+                    {
+                        webClient.DownloadFile("https://npcap.com/dist/npcap-1.78.exe", tempInstaller);
+                    }
+
+                    var pInfo = new ProcessStartInfo
+                    {
+                        FileName = tempInstaller,
+                        UseShellExecute = true,
+                        Verb = "runas"
+                    };
+                    var process = Process.Start(pInfo);
+                    process.WaitForExit();
+
+                    MessageBox.Show("Установка завершена. Пожалуйста, перезапустите приложение.", "Готово", MessageBoxButton.OK, MessageBoxImage.Information);
+                    Environment.Exit(0);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("Ошибка при установке: " + ex.Message, "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+        }
+
         public static void EnsureNpcapLoaded()
         {
             try
             {
+                CheckAndInstallNpcap();
+
                 string baseDir = AppDomain.CurrentDomain.BaseDirectory;
                 
                 // 1. Try local application directory

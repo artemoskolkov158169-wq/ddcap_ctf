@@ -118,27 +118,23 @@ namespace DDCAP.AltayCTF
                     processedCount++;
                 }
 
+                // ⚡ Bolt Optimization: Replacing O(N) array copy & full Clear() loop with efficient RemoveAt(0).
+                // Previously, creating a new List, calling Clear() on ObservableCollection (which triggers CollectionChanged event),
+                // and then re-adding 10,000 items (triggering 10,000 CollectionChanged events!) caused massive UI thread stalls
+                // and memory allocations on every batch.
+                // Now, we simply pop the oldest elements directly, which is significantly faster and emits fewer UI update events.
+
                 // Ring buffer memory cap: prevent Out Of Memory by bulk pruning oldest records
                 int excessAll = _viewModel.AllPackets.Count - MAX_IN_MEMORY_PACKETS;
-                if (excessAll > 0)
+                for (int i = 0; i < excessAll; i++)
                 {
-                    var trimmed = new List<TrafficPacket>(_viewModel.AllPackets.Count - excessAll);
-                    for (int i = excessAll; i < _viewModel.AllPackets.Count; i++)
-                        trimmed.Add(_viewModel.AllPackets[i]);
-                    _viewModel.AllPackets.Clear();
-                    for (int i = 0; i < trimmed.Count; i++)
-                        _viewModel.AllPackets.Add(trimmed[i]);
+                    _viewModel.AllPackets.RemoveAt(0);
                 }
 
                 int excessFiltered = _viewModel.FilteredPackets.Count - MAX_FILTERED_PACKETS;
-                if (excessFiltered > 0)
+                for (int i = 0; i < excessFiltered; i++)
                 {
-                    var trimmed = new List<TrafficPacket>(_viewModel.FilteredPackets.Count - excessFiltered);
-                    for (int i = excessFiltered; i < _viewModel.FilteredPackets.Count; i++)
-                        trimmed.Add(_viewModel.FilteredPackets[i]);
-                    _viewModel.FilteredPackets.Clear();
-                    for (int i = 0; i < trimmed.Count; i++)
-                        _viewModel.FilteredPackets.Add(trimmed[i]);
+                    _viewModel.FilteredPackets.RemoveAt(0);
                 }
 
                 if (processedCount > 0)
